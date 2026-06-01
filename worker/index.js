@@ -308,12 +308,12 @@ function parseFetchedMessage(response, folder, uid) {
   const internalDateRaw = response.match(/INTERNALDATE\s+"([^"]+)"/i)?.[1] || "";
   const internalDate = internalDateRaw ? new Date(internalDateRaw) : null;
   const raw = stripImapFetchEnvelope(response);
-  const headers = raw.split(/\r?\n\r?\n/)[0] || "";
+  const { headers, body } = splitMessage(raw);
   const subject = decodeMimeWords(unfoldHeader(headers.match(/^Subject:\s*(.+)$/im)?.[1] || ""));
   const from = decodeMimeWords(unfoldHeader(headers.match(/^From:\s*(.+)$/im)?.[1] || ""));
   const dateHeader = headers.match(/^Date:\s*(.+)$/im)?.[1] || "";
   const date = parseDate(dateHeader) || parseDate(internalDateRaw) || internalDate;
-  const text = decodeMessageText(raw);
+  const text = decodeMessageText(body);
   const snippet = compact(text).slice(0, 180);
 
   return {
@@ -334,6 +334,12 @@ function stripImapFetchEnvelope(response) {
   return response;
 }
 
+function splitMessage(raw) {
+  const match = String(raw || "").match(/([\s\S]*?)\r?\n\r?\n([\s\S]*)/);
+  if (!match) return { headers: raw || "", body: "" };
+  return { headers: match[1] || "", body: match[2] || "" };
+}
+
 function decodeMessageText(raw) {
   let text = raw;
   text = decodeQuotedPrintable(text);
@@ -345,13 +351,38 @@ function decodeMessageText(raw) {
 function extractCodes(text, digits) {
   const re = new RegExp(`(?<!\\d)(\\d{${digits}})(?!\\d)`, "g");
   const blocked = new Set(["000000", "111111", "123456", "654321"]);
-  const codes = [];
+  const candidates = [];
   for (const match of text.matchAll(re)) {
     const code = match[1];
     if (blocked.has(code)) continue;
-    if (!codes.includes(code)) codes.push(code);
+    if (candidates.some((item) => item.code === code)) continue;
+    candidates.push({ code, index: match.index || 0, score: scoreCodeCandidate(text, match.index || 0) });
   }
-  return codes;
+  return candidates
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((item) => item.code);
+}
+
+function scoreCodeCandidate(text, index) {
+  const before = text.slice(Math.max(0, index - 160), index);
+  const after = text.slice(index, Math.min(text.length, index + 160));
+  const context = `${before} ${after}`.toLowerCase();
+  let score = 0;
+
+  if (/验证码|驗證碼|校验码|校驗碼|登录代码|登入代碼|登录码|安全代码|security code|verification code|verify code|login code|code is|your code/.test(context)) {
+    score += 100;
+  }
+  if (/chatgpt|openai|tm\.openai\.com|noreply/.test(context)) {
+    score += 30;
+  }
+  if (/received:|dkim-signature|message-id|microsoft smtp server|namprd|outlook\.com|mime-version|content-type/.test(context)) {
+    score -= 80;
+  }
+  if (/^\s*(received|dkim-signature|message-id|content-type|date|from|to|subject):/im.test(before.slice(-80))) {
+    score -= 100;
+  }
+
+  return score;
 }
 
 function containsKeywords(parsed, keywords) {
