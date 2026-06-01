@@ -1,0 +1,11 @@
+﻿# 本文件用于“本地配置文件模式”。
+# 更推荐使用 docker-compose.yml 里的 token 模式。
+# 如果你用 cloudflared tunnel create，本文件可复制成 config.yml 后修改。
+
+tunnel: imap-code
+credentials-file: /etc/cloudflared/imap-code.json
+
+ingress:
+  - hostname: imap.example.com
+    service: http://127.0.0.1:8787
+  - service: http_status:404

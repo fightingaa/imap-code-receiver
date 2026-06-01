@@ -1,0 +1,85 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IMAP Code Receiver</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <div>
+        <h1>IMAP Code Receiver</h1>
+        <p>导入 <code>email----password----client_id----refresh_token</code>，通过 Outlook IMAP OAuth2 读取验证码。</p>
+      </div>
+      <button id="refreshBtn">刷新账号</button>
+    </header>
+
+    <section class="card auth-card">
+      <label>访问 Token</label>
+      <input id="adminToken" type="password" placeholder="如果服务端设置了 ADMIN_TOKEN，就填这里" />
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>批量导入</h2>
+        <textarea id="importText" spellcheck="false" placeholder="account@hotmail.com----password----client_id----refresh_token"></textarea>
+        <div class="row">
+          <label class="check"><input id="replaceImport" type="checkbox" /> 清空后重新导入</label>
+          <button id="importBtn">导入</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>取验证码</h2>
+        <label>邮箱</label>
+        <select id="emailSelect"></select>
+        <label>关键词</label>
+        <input id="keywords" value="" placeholder="可空。比如 openai,bitcall,verification" />
+        <div class="inline">
+          <div>
+            <label>位数</label>
+            <input id="digits" type="number" min="4" max="10" value="6" />
+          </div>
+          <div>
+            <label>最近分钟</label>
+            <input id="sinceMinutes" type="number" min="1" max="1440" value="30" />
+          </div>
+        </div>
+        <button id="otpBtn" class="primary">取码一次</button>
+      </div>
+    </section>
+
+    <section id="result" class="notice hidden"></section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h2>账号池</h2>
+          <p id="countText">-</p>
+        </div>
+        <input id="search" placeholder="搜索邮箱" />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>邮箱</th>
+              <th>密码</th>
+              <th>Client ID</th>
+              <th>Refresh Token</th>
+              <th>最后取码</th>
+              <th>验证码</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="accountsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+﻿services:
+  imap-code-receiver:
+    build: .
+    container_name: imap-code-receiver
+    restart: unless-stopped
+    environment:
+      PORT: 8787
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
+      DATA_DIR: /app/data
+      MS_TOKEN_URL: https://login.microsoftonline.com/common/oauth2/v2.0/token
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "127.0.0.1:8787:8787"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: imap-code-tunnel
+    restart: unless-stopped
+    depends_on:
+      - imap-code-receiver
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
