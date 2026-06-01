@@ -67,20 +67,24 @@ async function handleOtp(payload) {
     const candidates = pickFolders(listed);
 
     for (const folder of candidates) {
-      const opened = await client.examine(folder);
-      folders.push({ folder, exists: opened.exists });
-      if (!opened.exists) continue;
+      try {
+        const opened = await client.examine(folder);
+        folders.push({ folder, exists: opened.exists });
+        if (!opened.exists) continue;
 
-      const uids = await client.searchSince(minDate);
-      const selectedUids = uids.slice(-limit).reverse();
+        const uids = await client.searchSince(minDate);
+        const selectedUids = uids.slice(-limit).reverse();
 
-      for (const uid of selectedUids) {
-        const raw = await client.fetchMessage(uid);
-        const parsed = parseFetchedMessage(raw, folder, uid);
-        if (strictSince && parsed.date && parsed.date < minDate) continue;
-        if (keywords && !containsKeywords(parsed, keywords)) continue;
-        parsed.codes = extractCodes(parsed.text, digits);
-        messages.push(parsed);
+        for (const uid of selectedUids) {
+          const raw = await client.fetchMessage(uid);
+          const parsed = parseFetchedMessage(raw, folder, uid);
+          if (strictSince && parsed.date && parsed.date < minDate) continue;
+          if (keywords && !containsKeywords(parsed, keywords)) continue;
+          parsed.codes = extractCodes(parsed.text, digits);
+          messages.push(parsed);
+        }
+      } catch (error) {
+        folders.push({ folder, exists: false, skipped: true, error: trimLog(error.message || error) });
       }
     }
 
