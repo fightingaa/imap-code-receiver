@@ -520,7 +520,15 @@ const APP_HTML = `<!doctype html>
     th, td { border-bottom: 1px solid #e5e7eb; text-align: left; padding: 12px 8px; vertical-align: top; }
     th { white-space: nowrap; }
     .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
-    .log { white-space: pre-wrap; background: #111827; color: #e5e7eb; border-radius: 12px; padding: 14px; min-height: 80px; max-height: 260px; overflow: auto; }
+    .log { background: #f8fafc; color: #111827; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; min-height: 70px; line-height: 1.7; }
+    .log pre { white-space: pre-wrap; background: #111827; color: #e5e7eb; border-radius: 10px; padding: 12px; overflow: auto; max-height: 220px; }
+    .status-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .status-ok { color: #059669; }
+    .status-warn { color: #d97706; }
+    .status-bad { color: #dc2626; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 13px; font-weight: 700; margin: 0 6px 6px 0; }
+    details { margin-top: 10px; }
+    summary { cursor: pointer; color: #4b5563; font-weight: 700; }
     @media (max-width: 800px) { .row { grid-template-columns: 1fr; } table { display: block; overflow-x: auto; } }
   </style>
 </head>
@@ -651,6 +659,70 @@ const APP_HTML = `<!doctype html>
       $("log").textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
     }
 
+    function logHtml(html) {
+      $("log").innerHTML = html;
+    }
+
+    function renderOtpResult(data) {
+      if (data.code) {
+        const folders = renderFolderPills(data.folders);
+        const messages = renderMessageList(data.messages);
+        logHtml(
+          "<div class='status-title status-ok'>已找到验证码</div>" +
+          "<div>验证码：<b class='code'>" + escapeHtml(data.code) + "</b></div>" +
+          "<div class='muted'>已读取邮箱，命中文章来自最近邮件。</div>" +
+          folders +
+          messages +
+          renderRawDetails(data)
+        );
+        return;
+      }
+
+      const folders = renderFolderPills(data.folders);
+      const messages = renderMessageList(data.messages);
+      const readCount = Array.isArray(data.messages) ? data.messages.length : 0;
+      logHtml(
+        "<div class='status-title status-warn'>未找到验证码</div>" +
+        "<div>邮箱连接正常，但最近 30 分钟内没有识别到 6 位验证码。</div>" +
+        "<div class='muted'>已读取 " + readCount + " 封候选邮件。可以确认验证码邮件是否已送达，或重新发送后再点取码。</div>" +
+        folders +
+        messages +
+        renderRawDetails(data)
+      );
+    }
+
+    function renderFetchError(error) {
+      logHtml(
+        "<div class='status-title status-bad'>取码失败</div>" +
+        "<div>" + escapeHtml(error.message || String(error)) + "</div>"
+      );
+    }
+
+    function renderFolderPills(folders) {
+      if (!Array.isArray(folders) || !folders.length) return "";
+      return "<div style='margin-top:10px'>" + folders.map((item) => {
+        const label = item.skipped
+          ? item.folder + "：跳过"
+          : item.folder + "：" + (item.exists || 0) + " 封";
+        return "<span class='pill'>" + escapeHtml(label) + "</span>";
+      }).join("") + "</div>";
+    }
+
+    function renderMessageList(messages) {
+      if (!Array.isArray(messages) || !messages.length) return "<div class='muted' style='margin-top:8px'>没有候选邮件。</div>";
+      const rows = messages.slice(0, 5).map((item) => {
+        const title = item.subject || "(无主题)";
+        const date = item.date ? new Date(item.date).toLocaleString() : "-";
+        const codes = item.codes && item.codes.length ? "，验证码 " + item.codes.join(", ") : "";
+        return "<li><b>" + escapeHtml(title) + "</b><br><span class='muted'>" + escapeHtml(item.folder || "-") + " · " + escapeHtml(date) + codes + "</span></li>";
+      }).join("");
+      return "<ul style='margin:10px 0 0 20px;padding:0'>" + rows + "</ul>";
+    }
+
+    function renderRawDetails(data) {
+      return "<details><summary>查看原始响应</summary><pre>" + escapeHtml(JSON.stringify(data, null, 2)) + "</pre></details>";
+    }
+
     $("importBtn").onclick = () => {
       try {
         const lines = $("importText").value.split(/\\r?\\n/).filter((line) => line.trim());
@@ -700,9 +772,9 @@ const APP_HTML = `<!doctype html>
         } else {
           $("code").textContent = "-";
         }
-        log(data);
+        renderOtpResult(data);
       } catch (error) {
-        log("取码失败：" + error.message);
+        renderFetchError(error);
       } finally {
         $("fetchBtn").disabled = state.accounts.length === 0;
       }
