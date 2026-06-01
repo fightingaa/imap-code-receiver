@@ -5,12 +5,17 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy"
   },
   "dependencies": {
     "express": "^5.1.0",
     "imapflow": "^1.0.193",
     "mailparser": "^3.7.4"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
   },
   "engines": {
     "node": ">=20"

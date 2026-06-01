@@ -1,0 +1,11 @@
+name = "imap-code-receiver"
+main = "worker/index.js"
+compatibility_date = "2026-06-01"
+workers_dev = true
+keep_vars = true
+
+[observability]
+enabled = true
+
+# 可选。需要保护接口时，在 Cloudflare Worker Settings -> Variables and Secrets 里设置：
+# ADMIN_TOKEN = "一串随机字符串"

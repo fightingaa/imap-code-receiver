@@ -10,7 +10,12 @@ email----password----client_id----refresh_token
 
 这个项目适合单独开 GitHub 仓库。
 
-注意：GitHub Pages 不能部署这个服务。它需要服务端去刷新 access_token 和连接 IMAP。可以部署到 VPS、Docker、Render、Railway、Fly.io、Zeabur、Vercel Serverless 以外的常驻 Node 服务。
+注意：GitHub Pages 不能部署这个服务。它需要后端刷新 access_token 并连接 IMAP。
+
+现在提供两种部署：
+
+- Cloudflare Workers：不用 Tunnel，不用 Zero Trust，不需要绑卡。账号保存在浏览器 localStorage。
+- Node/Docker：账号保存在服务端 JSON 文件。
 
 ## 功能
 
@@ -21,6 +26,93 @@ email----password----client_id----refresh_token
 - 按关键词筛选验证码邮件
 - 取码一次，不做后台轮询
 - 可设置 `ADMIN_TOKEN` 做简单访问保护
+
+## Cloudflare Workers 部署
+
+这个方式对应 Cloudflare Dashboard 里的 `Workers & Pages`。
+
+不走 Tunnel。
+
+不需要 Zero Trust。
+
+不需要在 Cloudflare 端保存邮箱账号。
+
+### 1. 推送到 GitHub
+
+已经推送过可以跳过。
+
+```bash
+git add .
+git commit -m "add cloudflare worker version"
+git push
+```
+
+### 2. 在 Cloudflare 创建 Worker
+
+进入：
+
+```text
+Workers & Pages -> Create application -> Import a repository
+```
+
+选择仓库：
+
+```text
+fightingaa/imap-code-receiver
+```
+
+构建配置：
+
+```text
+Framework preset: None
+Build command: npm install
+Deploy command: npx wrangler deploy
+Root directory: /
+```
+
+部署后会得到：
+
+```text
+https://imap-code-receiver.<你的 workers.dev 子域>.workers.dev
+```
+
+### 3. 可选：设置访问口令
+
+如果要保护接口：
+
+```text
+Worker -> Settings -> Variables and Secrets -> Add
+```
+
+添加：
+
+```text
+ADMIN_TOKEN=一串随机字符串
+```
+
+页面里 `ADMIN_TOKEN` 输入框也填同一个。
+
+不设置也能用，但公开地址任何人都能调用接口。
+
+### 4. 使用
+
+打开 Worker 地址。
+
+导入：
+
+```text
+email----password----client_id----refresh_token
+```
+
+点击取码。
+
+Worker 会实时：
+
+```text
+refresh_token -> access_token -> IMAP XOAUTH2 -> INBOX/Junk Email -> 提取验证码
+```
+
+账号只在当前浏览器保存。
 
 ## 启动
 
@@ -125,7 +217,9 @@ git push -u origin main
 
 ## Cloudflare Tunnel 部署
 
-推荐用 Docker Compose + Cloudflare Tunnel。
+如果 Zero Trust 能正常开通，也可以用 Docker Compose + Cloudflare Tunnel。
+
+如果 Free 计划要求绑卡且绑卡失败，就不要走这条。
 
 先在 Cloudflare 创建 Tunnel：
 
