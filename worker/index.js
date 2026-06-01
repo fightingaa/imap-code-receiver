@@ -25,7 +25,6 @@ export default {
       }
 
       if (request.method === "POST" && url.pathname === "/api/otp") {
-        requireToken(request, env);
         const payload = await request.json();
         const result = await handleOtp(payload);
         return json(result);
@@ -461,20 +460,6 @@ function badRequest(code, message) {
   return error;
 }
 
-function requireToken(request, env) {
-  const expected = env.ADMIN_TOKEN;
-  if (!expected) return;
-  const header = request.headers.get("x-admin-token") || "";
-  const auth = request.headers.get("authorization") || "";
-  const provided = header || auth.replace(/^Bearer\s+/i, "");
-  if (provided !== expected) {
-    const error = new Error("未授权。");
-    error.status = 401;
-    error.code = "unauthorized";
-    throw error;
-  }
-}
-
 function json(data, status = 200) {
   return withCors(
     new Response(JSON.stringify(data, null, 2), {
@@ -496,7 +481,7 @@ function withCors(response) {
   const headers = new Headers(response.headers);
   headers.set("access-control-allow-origin", "*");
   headers.set("access-control-allow-methods", "GET,POST,OPTIONS");
-  headers.set("access-control-allow-headers", "content-type,authorization,x-admin-token");
+  headers.set("access-control-allow-headers", "content-type");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -541,24 +526,6 @@ const APP_HTML = `<!doctype html>
     <p>导入 <span class="mono">email----password----client_id----refresh_token</span>。账号只保存在当前浏览器 localStorage，不会写入 Cloudflare。</p>
 
     <section class="card">
-      <h2>配置</h2>
-      <div class="row">
-        <div>
-          <label>ADMIN_TOKEN，可空</label>
-          <input id="adminToken" placeholder="如果 Worker 设置了 ADMIN_TOKEN，这里填同一个" />
-        </div>
-        <div>
-          <label>关键词过滤，可空</label>
-          <input id="keywords" placeholder="例如 OpenAI ChatGPT verify" />
-        </div>
-        <div>
-          <label>最近分钟数</label>
-          <input id="sinceMinutes" type="number" min="1" max="1440" value="30" />
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
       <h2>导入邮箱</h2>
       <textarea id="importText" placeholder="account@hotmail.com----password----client_id----refresh_token"></textarea>
       <div class="actions">
@@ -570,20 +537,8 @@ const APP_HTML = `<!doctype html>
 
     <section class="card">
       <h2>取码</h2>
-      <div class="row">
-        <div>
-          <label>邮箱</label>
-          <select id="accountSelect"></select>
-        </div>
-        <div>
-          <label>验证码位数</label>
-          <input id="digits" type="number" min="4" max="10" value="6" />
-        </div>
-        <div>
-          <label>读取封数</label>
-          <input id="limit" type="number" min="1" max="50" value="20" />
-        </div>
-      </div>
+      <label>邮箱</label>
+      <select id="accountSelect"></select>
       <div class="actions">
         <button class="primary" id="fetchBtn">取码</button>
         <button id="copyBtn">复制验证码</button>
@@ -612,18 +567,15 @@ const APP_HTML = `<!doctype html>
 
   <script>
     const ACCOUNT_KEY = "imap-code-receiver:accounts:v1";
-    const TOKEN_KEY = "imap-code-receiver:admin-token";
     const state = {
       accounts: JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "[]"),
       lastCode: "",
     };
 
     const $ = (id) => document.getElementById(id);
-    $("adminToken").value = localStorage.getItem(TOKEN_KEY) || "";
 
     function save() {
       localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.accounts));
-      localStorage.setItem(TOKEN_KEY, $("adminToken").value.trim());
       render();
     }
 
@@ -728,14 +680,9 @@ const APP_HTML = `<!doctype html>
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-admin-token": $("adminToken").value.trim(),
           },
           body: JSON.stringify({
             account,
-            keywords: $("keywords").value.trim(),
-            digits: Number($("digits").value || 6),
-            limit: Number($("limit").value || 20),
-            sinceMinutes: Number($("sinceMinutes").value || 30),
           }),
         });
         const data = await response.json();

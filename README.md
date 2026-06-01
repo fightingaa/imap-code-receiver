@@ -23,9 +23,7 @@ email----password----client_id----refresh_token
 - 本地 JSON 存储账号池
 - Outlook / Hotmail / Live OAuth2 refresh_token 换 access_token
 - IMAP 读取 Inbox / Junk Email / Junk / Spam
-- 按关键词筛选验证码邮件
 - 取码一次，不做后台轮询
-- 可设置 `ADMIN_TOKEN` 做简单访问保护
 
 ## Cloudflare Workers 部署
 
@@ -76,25 +74,7 @@ Root directory: /
 https://imap-code-receiver.<你的 workers.dev 子域>.workers.dev
 ```
 
-### 3. 可选：设置访问口令
-
-如果要保护接口：
-
-```text
-Worker -> Settings -> Variables and Secrets -> Add
-```
-
-添加：
-
-```text
-ADMIN_TOKEN=一串随机字符串
-```
-
-页面里 `ADMIN_TOKEN` 输入框也填同一个。
-
-不设置也能用，但公开地址任何人都能调用接口。
-
-### 4. 使用
+### 3. 使用
 
 打开 Worker 地址。
 
@@ -129,14 +109,6 @@ npm start
 http://127.0.0.1:8787
 ```
 
-如果 `.env` 里设置了：
-
-```text
-ADMIN_TOKEN=change-me
-```
-
-前端页面的“访问 Token”也要填同一个值。
-
 ## 导入格式
 
 支持：
@@ -168,15 +140,13 @@ email----password----client_id----refresh_token
 ```bash
 curl -X POST http://127.0.0.1:8787/api/accounts/import \
   -H "content-type: application/json" \
-  -H "x-admin-token: change-me" \
   -d '{"text":"a@hotmail.com----pass----client_id----refresh_token"}'
 ```
 
 ### 列出账号
 
 ```bash
-curl http://127.0.0.1:8787/api/accounts \
-  -H "x-admin-token: change-me"
+curl http://127.0.0.1:8787/api/accounts
 ```
 
 ### 取验证码
@@ -184,8 +154,7 @@ curl http://127.0.0.1:8787/api/accounts \
 ```bash
 curl -X POST http://127.0.0.1:8787/api/otp \
   -H "content-type: application/json" \
-  -H "x-admin-token: change-me" \
-  -d '{"email":"a@hotmail.com","keywords":"openai verification","digits":6,"sinceMinutes":30}'
+  -d '{"email":"a@hotmail.com"}'
 ```
 
 ## 部署到 GitHub + Docker 主机
@@ -209,7 +178,6 @@ git push -u origin main
  docker run -d \
    --name imap-code-receiver \
    -p 8787:8787 \
-   -e ADMIN_TOKEN='change-me' \
    -e DATA_DIR='/app/data' \
    -v $(pwd)/data:/app/data \
    imap-code-receiver
@@ -245,7 +213,6 @@ cp .env.tunnel.example .env
 修改 `.env`：
 
 ```text
-ADMIN_TOKEN=一个随机长字符串
 CLOUDFLARE_TUNNEL_TOKEN=Cloudflare 给你的 tunnel token
 ```
 
@@ -261,8 +228,6 @@ docker compose up -d --build
 https://imap.yourdomain.com
 ```
 
-页面里的“访问 Token”填写 `ADMIN_TOKEN`。
-
 详细说明见：
 
 ```text
@@ -277,7 +242,6 @@ deploy/cloudflared/README.md
 Build Command: npm install
 Start Command: npm start
 Environment:
-  ADMIN_TOKEN=一个随机长字符串
   DATA_DIR=/data
 ```
 
@@ -287,6 +251,5 @@ Environment:
 
 - `refresh_token` 等同邮箱长期访问凭据。
 - 不要把导入文件提交到仓库。
-- 公开部署必须设置 `ADMIN_TOKEN`。
 - 多人共用时，建议每个人单独部署一份。
 - 如果要做真正多用户，需要加登录、权限隔离和数据库加密。
